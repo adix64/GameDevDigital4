@@ -2,7 +2,7 @@
 Material Curs: <br/>
 https://docs.google.com/document/d/12vDlh27MUGIZoKoudzAp5LZ08ZYKGuUMrFPhg9vndi4/edit <br/>
 Proiecte: <br/>
-https://docs.google.com/spreadsheets/d/1RYnCxcf0BmFqsxbTobeS3K-wrH-yIkGQkGuybabK0ZM/edit#gid=0 <br/>
+https://docs.google.com/spreadsheets/d/1gUr9EYjfHrGPeKjC23U_9H3exqMAyvTYWR0Ks51kQdk/edit#gid=0 <br/>
 Resurse Utile: <br/>
   &nbsp;&nbsp;• Unity Manual https://docs.unity3d.com/Manual/index.html <br/>
   &nbsp;&nbsp;• Unity Scripting API https://docs.unity3d.com/ScriptReference/index.html <br/>
