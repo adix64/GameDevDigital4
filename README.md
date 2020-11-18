@@ -28,3 +28,4 @@ game design: <br/>
   &nbsp;&nbsp;• Level Up! https://www.academia.edu/9265504/Level_Up_The_Guide_to_Great_Video_Game_Design <br/>
 networking api: <br/>
   &nbsp;&nbsp;• photon engine https://www.photonengine.com/ <br/>
+ &nbsp;&nbsp;• Elemente de Grafica pe Calculator (EGC) https://ocw.cs.pub.ro/courses/egc <br/>
