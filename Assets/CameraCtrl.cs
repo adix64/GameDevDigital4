@@ -23,7 +23,7 @@ public class CameraCtrl : MonoBehaviour
         //efectuam rotatia:
         transform.rotation = Quaternion.Euler(pitch, yaw, 0f);
         //pentru camera third person:
-        //plasam camera in pozita personajului si ne dem in spate distanceToTarget unitati:
+        //plasam camera in pozita personajului si ne dam in spate distanceToTarget unitati:
         transform.position = jucator.position - transform.forward * distanceToTarget;
     }
 }

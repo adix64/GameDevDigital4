@@ -6,23 +6,93 @@ public class MovePlayer : MonoBehaviour
 {
     public float moveSpeed = 2f; // viteza de deplasare a personajului
     public float rotSpeed = 4f; // viteza de orientare a personajului
+    public float jumpPower = 4f;
+    public float groundedThreshold = 0.1f;
+    public float minY = -30f;
+
     public Transform cameraTransform;
     Rigidbody rigidbody;
+    Animator animator;
+    CapsuleCollider capsule;
     Vector3 moveDir; // directia deplasarii personajului, in World Space
+
+    Vector3 initialPos;
+
+    bool movingWith = false;
+    Collider moveWithCollider;
+    Rigidbody moveWithRigidbody;
     // Apelat o singura data, la inceputul jocului sau cand obiectul e activat/spawnat
     void Start()
     {
         rigidbody = GetComponent<Rigidbody>();
+        capsule  = GetComponent<CapsuleCollider>();
+        animator = GetComponent<Animator>();
+        initialPos = transform.position;
     }
     // Update e apelat de N ori pe secunda, N fluctuant, preferabil N > 60FPS
     void Update()
     {
         GetMovementDirection();
+        UpdateAnimatorParameters();
         ApplyRootMotion();
         ApplyRootRotation();
         //ApplyRootRotationSimple(dir);
+        HandleMidair();
+        HandleAttack();
     }
 
+    private void HandleAttack()
+    {
+        if (Input.GetButtonDown("Fire1"))
+        {
+            animator.SetTrigger("Attack");
+        }
+    }
+
+    private void HandleMidair()
+    {
+        bool midair = true;
+        for (float xOffset = -1f; xOffset <= 1f; xOffset += 1f)
+        {
+            for (float zOffset = -1f; zOffset <= 1f; zOffset += 1f)
+            {
+                Vector3 offset = new Vector3(xOffset, 0, zOffset).normalized * capsule.radius;
+                Ray ray = new Ray(transform.position + Vector3.up * groundedThreshold + offset, Vector3.down);
+        
+                if (Physics.Raycast(ray, 2f * groundedThreshold))
+                {//pe pamant
+                    midair = false;
+                    break;
+                }
+            }
+        }
+
+        if(midair)
+        {//in aer
+            animator.SetBool("Midair", true);
+        }
+        else
+        {//pe sol
+            animator.SetBool("Midair", false);
+
+            if (Input.GetButtonDown("Jump"))
+            {//poti sari doar daca esti pe sol
+                Vector3 jumpForce = (Vector3.up + moveDir) * jumpPower;
+                rigidbody.AddForce(jumpForce, ForceMode.VelocityChange);
+            }
+        }
+
+        if (transform.position.y < minY)
+        {//teleporteaza player la pozitia initiala daca a cazut suficient de jos
+            transform.position = initialPos;
+        }
+    }
+    private void UpdateAnimatorParameters()
+    {
+        Vector3 characterSpaceDir = transform.InverseTransformDirection(moveDir);
+        animator.SetFloat("Forward", characterSpaceDir.z, 0.1f, Time.deltaTime);
+        animator.SetFloat("Right", characterSpaceDir.x, 0.1f, Time.deltaTime);
+    }
     private void ApplyRootRotationSimple(Vector3 dir)
     {
         Quaternion lookAtDir = Quaternion.LookRotation(dir); // rotatia dorita, ce aliniaza personajul cu fata catre moveDir
@@ -32,6 +102,9 @@ public class MovePlayer : MonoBehaviour
 
     private void ApplyRootRotation()
     {
+        var stateInfo = animator.GetCurrentAnimatorStateInfo(0);
+        if (animator.GetBool("Midair") || stateInfo.IsTag("attack") )
+            return;
         Vector3 F = transform.forward; // directia in care privestre personajul, vector mobil
         Vector3 D = moveDir; // directia de aliniat personajul, vector fix
 
@@ -55,10 +128,31 @@ public class MovePlayer : MonoBehaviour
         //deplasamentul trebuie sa fie proportional cu timpul scurs intre 2 cadre...
         //...ca sa putem mentine viteza independent de framerate
         //doar pentru non - rigidbody:
-            //Vector3 offset = dir * Time.deltaTime * moveSpeed; //deplasamentul intre cadre...
-            // transform.position += offset; //se aduna la pozitia personajului
+        //Vector3 offset = dir * Time.deltaTime * moveSpeed; //deplasamentul intre cadre...
+        // transform.position += offset; //se aduna la pozitia personajului
+
+        if (animator.GetBool("Midair"))
+        {
+            animator.applyRootMotion = false;
+            return;
+        }else
+            animator.applyRootMotion = true;
+
         float velY = rigidbody.velocity.y;
-        rigidbody.velocity = moveDir * moveSpeed;
+        rigidbody.velocity = animator.deltaPosition / Time.deltaTime;//moveDir * moveSpeed;
+        if (movingWith)
+        {//daca e platforma cu care se misca impreuna
+            if (rigidbody.velocity.magnitude > 0.025f)
+            {//daca incerci sa te misti din taste/joystick, atunci fa frecare mica cu platforma
+                moveWithCollider.material.staticFriction = 20f;
+            }
+            else
+            {//altfel frecare mare ca sa se miste impreuna cu ea
+                moveWithCollider.material.staticFriction = 200f;
+                rigidbody.velocity += moveWithRigidbody.velocity;
+            }
+
+        }
         rigidbody.velocity = new Vector3(rigidbody.velocity.x,
                                          velY, // se pastreaza doar componenta verticala ca sa cada fizic
                                          rigidbody.velocity.z);
@@ -73,5 +167,19 @@ public class MovePlayer : MonoBehaviour
         moveDir.y = 0f; // miscarea se face doar in planul orizontal, xOz
         moveDir = moveDir.normalized; // lungime 1 pentru orice Vector3 ce reprezinta directie
        
+    }
+    private void OnCollisionEnter(Collision collision)
+    {//functie declansata automat in cadrul in care incepe coliziunea
+        if (collision.rigidbody.gameObject.layer == LayerMask.NameToLayer("MoveWith"))
+        {//coliziune cu platforma care te poarta pe ea (se afla pe layer "MoveWith")
+            movingWith = true; // incepe deplasarea impreuna cu platforma
+            moveWithCollider = collision.collider;
+            moveWithRigidbody = collision.rigidbody;
+        }
+    }
+    private void OnCollisionExit(Collision collision)
+    {//functie declansata automat in cadrul in care se termina coliziunea
+        if (collision.rigidbody.gameObject.layer == LayerMask.NameToLayer("MoveWith"))
+            movingWith = false;// se incheie deplasarea impreuna cu platforma
     }
 }
