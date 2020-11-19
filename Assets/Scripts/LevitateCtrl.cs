@@ -22,7 +22,7 @@ public class LevitateCtrl : MonoBehaviour
     }
 
     // Update is called once per frame
-    void Update()
+    void FixedUpdate()
     {
         float posX = Mathf.Sin(Time.time * horizontalFreq) * horizontalAmplitude; // oscilatia pe orizontala
         float posY = Mathf.Sin(Time.time * verticalFreq) * verticalAmplitude; // oscilatia pe verticala
@@ -30,6 +30,6 @@ public class LevitateCtrl : MonoBehaviour
         Vector3 newPosition = new Vector3(initialX + posX,
                                     initialY + posY, // doar coordonata verticala se schimba
                                     transform.position.z);
-        rigidbody.velocity = (newPosition - transform.position) / Time.deltaTime; // deplasament la noua pozitie impartit la timp
+        rigidbody.velocity = (newPosition - transform.position) / Time.fixedDeltaTime; // deplasament la noua pozitie impartit la timp
     }
 }
