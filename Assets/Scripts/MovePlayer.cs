@@ -11,6 +11,9 @@ public class MovePlayer : MonoBehaviour
     public float minY = -30f;
 
     public Transform cameraTransform;
+    public Transform weapon;
+    public Transform weaponTip;
+    Transform weaponMeshes;
     Rigidbody rigidbody;
     Animator animator;
     CapsuleCollider capsule;
@@ -25,6 +28,11 @@ public class MovePlayer : MonoBehaviour
     public Transform enemyContainer;
     List<Transform> enemies;
     AnimatorStateInfo stateInfo;
+
+    Transform rightHand;
+    Transform chest;
+    public float eX, eY, eZ;
+    public GameObject projectileTemplate;
     // Apelat o singura data, la inceputul jocului sau cand obiectul e activat/spawnat
     void Start()
     {
@@ -35,6 +43,9 @@ public class MovePlayer : MonoBehaviour
         enemies = new List<Transform>();
         for (int i = 0; i < enemyContainer.childCount; i++)
             enemies.Add(enemyContainer.GetChild(i));
+        rightHand = animator.GetBoneTransform(HumanBodyBones.RightHand);
+        chest = animator.GetBoneTransform(HumanBodyBones.UpperChest);
+        weaponMeshes = weapon.GetChild(0);
     }
     // Update e apelat de N ori pe secunda, N fluctuant, preferabil N > 60FPS
     void Update()
@@ -46,13 +57,48 @@ public class MovePlayer : MonoBehaviour
         ApplyRootRotationSimple();
         HandleMidair();
         HandleAttack();
+        HandleWeaponBehaviour();
     }
+    private void LateUpdate()
+    {
+        if (animator.GetBool("aiming"))
+        {
+            //ajusteaza rotatia trunchiului ca sa tinteasca de-alungul privirii camerei
+            chest.rotation = Quaternion.Euler(eX, eY, eZ) * Quaternion.LookRotation(cameraTransform.forward);
+            //pozitioneaza arma in mana personajului
+            weapon.position = rightHand.position;
+            weapon.rotation = rightHand.rotation;
+        }
+    }
+    private void HandleWeaponBehaviour()
+    {
+        if (Input.GetButton("Fire2"))
+        {//tinteste pe click dreapta
+            Cursor.lockState = CursorLockMode.Locked; //ascunde sagetica
+            animator.SetBool("aiming", true);
+            weapon.gameObject.SetActive(true); //arma vizibila
+            animator.SetLayerWeight(1, 1f); // suprascrie influenta maxima la animatia mainilor ca sa tina arma
+            if (Input.GetButtonDown("Fire1"))
+            { // spawneaza proiectil
+                GameObject go = GameObject.Instantiate(projectileTemplate);
+                go.transform.position = weaponTip.position; // pune proiectil in varful armei
+                go.transform.rotation = weaponTip.rotation; // cu orientarea varfului armei
+            }
+        }
+        else
+        {//inchide tintirea
+            Cursor.lockState = CursorLockMode.None;
+            animator.SetBool("aiming", false);
+            weapon.gameObject.SetActive(false);
+        }
+    }
+
 
     private void HandleAttack()
     {
         HandleGuardAnimation();
 
-        if (Input.GetButtonDown("Fire1"))
+        if (Input.GetButtonDown("Fire1") && !animator.GetBool("aiming"))
             animator.SetTrigger("Attack");
     }
 
@@ -120,6 +166,9 @@ public class MovePlayer : MonoBehaviour
         if (animator.GetBool("Midair"))// || stateInfo.IsTag("attack"))
             return;
         Vector3 D = GetClosestEnemyDirection();
+        if (animator.GetBool("aiming"))//orienteaza personajul cu fata in directia de privire a camerei
+            D = Vector3.Scale(cameraTransform.forward, new Vector3(1, 0, 1)).normalized;
+
         Quaternion lookAtDir = Quaternion.LookRotation(D); // rotatia dorita, ce aliniaza personajul cu fata catre moveDir
         // rotatia animata prin interpolare catre directia dorita
         transform.rotation = Quaternion.Slerp(transform.rotation, lookAtDir, Time.deltaTime * rotSpeed);
@@ -141,7 +190,8 @@ public class MovePlayer : MonoBehaviour
         }
         if (closestEnemyIndex != -1)
         {//daca exista cel mai apropiat inamic la mai putin de 4 metri
-            enemy = enemies[closestEnemyIndex];
+            if(!stateInfo.IsTag("attack")) //nu schimba inamicul in timp ce loveste
+                enemy = enemies[closestEnemyIndex];
             D = enemy.position - transform.position; //directia de privire pointeaza la inamic
             D.y = 0f; //directie in plan orizontal
             D = D.normalized;
@@ -195,7 +245,7 @@ public class MovePlayer : MonoBehaviour
     }
     private void OnCollisionEnter(Collision collision)
     {//functie declansata automat in cadrul in care incepe coliziunea
-        if (collision.rigidbody.gameObject.layer == LayerMask.NameToLayer("MoveWith"))
+        if (collision.collider.gameObject.layer == LayerMask.NameToLayer("MoveWith"))
         {//coliziune cu platforma care te poarta pe ea (se afla pe layer "MoveWith")
             movingWith = true; // incepe deplasarea impreuna cu platforma
             moveWithCollider = collision.collider;
@@ -204,7 +254,7 @@ public class MovePlayer : MonoBehaviour
     }
     private void OnCollisionExit(Collision collision)
     {//functie declansata automat in cadrul in care se termina coliziunea
-        if (collision.rigidbody.gameObject.layer == LayerMask.NameToLayer("MoveWith"))
+        if (collision.collider.gameObject.layer == LayerMask.NameToLayer("MoveWith"))
             movingWith = false;// se incheie deplasarea impreuna cu platforma
     }
 }

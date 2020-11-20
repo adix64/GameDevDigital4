@@ -7,6 +7,8 @@ public class TakeHitBhvr : StateMachineBehaviour
     // OnStateEnter is called when a transition starts and the state machine starts to evaluate this state
     override public void OnStateEnter(Animator animator, AnimatorStateInfo stateInfo, int layerIndex)
     {
+        animator.SetFloat("timeSinceTakenHit", 0f);//reseteaza timerul pentru ultimul hit luat
+
         //scade HP
         int HP = animator.GetInteger("HP");
         HP -= animator.GetInteger("TakenDamage");
